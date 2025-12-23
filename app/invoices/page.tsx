@@ -5,6 +5,8 @@ import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Sidebar } from "@/components/sidebar"
 import { InvoiceDialog } from "@/components/invoice-dialog"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -17,6 +19,10 @@ export default function InvoicesPage() {
   const [selectedInvoice, setSelectedInvoice] = useState<any>(null)
   const [currentTab, setCurrentTab] = useState("all")
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [paymentDialogOpen, setPaymentDialogOpen] = useState(false)
+  const [paymentInvoice, setPaymentInvoice] = useState<any>(null)
+  const [paymentAmount, setPaymentAmount] = useState<string>("")
+  const [paymentError, setPaymentError] = useState<string>("")
 
   const { invoices, loading, error, refetch } = useInvoices()
 
@@ -33,9 +39,9 @@ export default function InvoicesPage() {
     }
   }
 
-  const handleUpdatePaymentStatus = async (id: string, status: 'paid' | 'unpaid' | 'partial') => {
+  const handleUpdatePaymentStatus = async (id: string, status: 'paid' | 'unpaid' | 'partial', paidAmount?: number) => {
     try {
-      await invoicesAPI.updatePaymentStatus(id, status)
+      await invoicesAPI.updatePaymentStatus(id, status, paidAmount)
       refetch()
     } catch (err: any) {
       alert(err.message || 'Failed to update payment status')
@@ -85,23 +91,66 @@ export default function InvoicesPage() {
   }
 
   const stats = useMemo(() => {
-    const paid = invoices.filter((inv) => inv.paymentStatus === "paid")
-    const unpaid = invoices.filter((inv) => inv.paymentStatus === "unpaid")
-    const partial = invoices.filter((inv) => inv.paymentStatus === "partial")
+    const totals = invoicesList.reduce(
+      (acc, inv) => {
+        const total = Number(inv.totalAmount || 0)
+        const paidAmt = Number(inv.paidAmount || 0)
+        if (inv.paymentStatus === "paid") {
+          acc.paidCollected += total
+          acc.paidCount += 1
+        } else if (inv.paymentStatus === "unpaid") {
+          acc.pendingOutstanding += total
+          acc.pendingCount += 1
+        } else if (inv.paymentStatus === "partial") {
+          acc.partialCollected += paidAmt
+          acc.partialOutstanding += Math.max(0, total - paidAmt)
+          acc.partialCount += 1
+        }
+        acc.totalBilling += total
+        return acc
+      },
+      {
+        paidCollected: 0,
+        pendingOutstanding: 0,
+        partialCollected: 0,
+        partialOutstanding: 0,
+        totalBilling: 0,
+        paidCount: 0,
+        pendingCount: 0,
+        partialCount: 0,
+      }
+    )
 
-    const totalRevenue = paid.reduce((sum, inv) => sum + Number(inv.totalAmount || 0), 0)
-    const pendingAmount = unpaid.reduce((sum, inv) => sum + Number(inv.totalAmount || 0), 0)
-    const partialAmount = partial.reduce((sum, inv) => sum + Number(inv.totalAmount || 0), 0)
-
-    return {
-      totalRevenue,
-      pendingAmount,
-      partialAmount,
-      paidCount: paid.length,
-      pendingCount: unpaid.length,
-      partialCount: partial.length,
-    }
+    return totals
   }, [invoices])
+
+  const openPaymentDialog = (invoice: any) => {
+    setPaymentInvoice(invoice)
+    setPaymentAmount("")
+    setPaymentError("")
+    setPaymentDialogOpen(true)
+  }
+
+  const submitPayment = async () => {
+    if (!paymentInvoice) return
+    const currentPaid = Number(paymentInvoice.paidAmount || 0)
+    const total = Number(paymentInvoice.totalAmount || 0)
+    const addAmount = Number(paymentAmount)
+    if (isNaN(addAmount) || addAmount <= 0) {
+      setPaymentError("Enter a valid positive amount")
+      return
+    }
+    const newPaid = currentPaid + addAmount
+    const isPaid = newPaid >= total
+    try {
+      await handleUpdatePaymentStatus(paymentInvoice.id, isPaid ? 'paid' : 'partial', isPaid ? total : newPaid)
+      setPaymentDialogOpen(false)
+      setPaymentInvoice(null)
+      setPaymentAmount("")
+    } catch (err: any) {
+      setPaymentError(err.message || "Failed to apply payment")
+    }
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -142,24 +191,24 @@ export default function InvoicesPage() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
               <Card className="p-6">
-                <p className="text-sm text-muted-foreground mb-1">Total Revenue</p>
-                <p className="text-3xl font-bold text-foreground">{formatCurrency(stats.totalRevenue)}</p>
-                <p className="text-xs text-green-600 mt-1">{stats.paidCount} paid invoices</p>
+                <p className="text-sm text-muted-foreground mb-1">Collected</p>
+                <p className="text-3xl font-bold text-foreground">{formatCurrency(stats.paidCollected + stats.partialCollected)}</p>
+                <p className="text-xs text-green-600 mt-1">{stats.paidCount} paid · {stats.partialCount} partial</p>
               </Card>
               <Card className="p-6">
-                <p className="text-sm text-muted-foreground mb-1">Pending</p>
-                <p className="text-3xl font-bold text-foreground">{formatCurrency(stats.pendingAmount)}</p>
+                <p className="text-sm text-muted-foreground mb-1">Pending Outstanding</p>
+                <p className="text-3xl font-bold text-foreground">{formatCurrency(stats.pendingOutstanding)}</p>
                 <p className="text-xs text-muted-foreground mt-1">{stats.pendingCount} invoices</p>
               </Card>
               <Card className="p-6">
-                <p className="text-sm text-muted-foreground mb-1">Partial</p>
-                <p className="text-3xl font-bold text-foreground">{formatCurrency(stats.partialAmount)}</p>
+                <p className="text-sm text-muted-foreground mb-1">Partial Outstanding</p>
+                <p className="text-3xl font-bold text-foreground">{formatCurrency(stats.partialOutstanding)}</p>
                 <p className="text-xs text-muted-foreground mt-1">{stats.partialCount} invoices</p>
               </Card>
               <Card className="p-6">
                 <p className="text-sm text-muted-foreground mb-1">Total Billing</p>
                 <p className="text-3xl font-bold text-foreground">
-                  {formatCurrency(stats.totalRevenue + stats.pendingAmount + stats.partialAmount)}
+                  {formatCurrency(stats.totalBilling)}
                 </p>
                 <p className="text-xs text-muted-foreground mt-1">All invoices</p>
               </Card>
@@ -269,6 +318,9 @@ export default function InvoicesPage() {
                               <div>
                                 <p className="text-xs text-muted-foreground mb-1">Amount</p>
                                 <p className="text-lg text-foreground font-bold">{formatCurrency(Number(invoice.totalAmount))}</p>
+                                <p className="text-xs text-muted-foreground">
+                                  Paid: {formatCurrency(Number(invoice.paidAmount || 0))} · Outstanding: {formatCurrency(Math.max(0, Number(invoice.totalAmount) - Number(invoice.paidAmount || 0)))}
+                                </p>
                               </div>
                             </div>
                           </div>
@@ -278,12 +330,18 @@ export default function InvoicesPage() {
                               <Button
                                 variant="outline"
                                 size="sm"
-                                onClick={() => {
-                                  const newStatus = invoice.paymentStatus === 'unpaid' ? 'paid' : invoice.paymentStatus === 'partial' ? 'paid' : 'paid'
-                                  handleUpdatePaymentStatus(invoice.id, newStatus)
-                                }}
+                                onClick={() => handleUpdatePaymentStatus(invoice.id, 'paid', Number(invoice.totalAmount))}
                               >
                                 Mark Paid
+                              </Button>
+                            )}
+                            {invoice.paymentStatus !== 'paid' && (
+                              <Button
+                                variant="secondary"
+                                size="sm"
+                                onClick={() => openPaymentDialog(invoice)}
+                              >
+                                Add Payment
                               </Button>
                             )}
                             <Button
@@ -352,6 +410,54 @@ export default function InvoicesPage() {
       </div>
 
       <InvoiceDialog isOpen={isDialogOpen} onClose={handleDialogClose} invoice={selectedInvoice} />
+
+      <Dialog open={paymentDialogOpen} onOpenChange={setPaymentDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add Payment</DialogTitle>
+          </DialogHeader>
+          {paymentInvoice && (
+            <div className="space-y-4">
+              <div>
+                <p className="text-sm text-muted-foreground">Invoice</p>
+                <p className="font-semibold">{paymentInvoice.invoiceNumber}</p>
+                <p className="text-xs text-muted-foreground">{paymentInvoice.customer?.name || "Unknown customer"}</p>
+              </div>
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <p className="text-muted-foreground">Total</p>
+                  <p className="font-semibold">{formatCurrency(Number(paymentInvoice.totalAmount || 0))}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Outstanding</p>
+                  <p className="font-semibold">
+                    {formatCurrency(Math.max(0, Number(paymentInvoice.totalAmount || 0) - Number(paymentInvoice.paidAmount || 0)))}
+                  </p>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="paymentAmount">Payment amount</Label>
+                <Input
+                  id="paymentAmount"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={paymentAmount}
+                  onChange={(e) => {
+                    setPaymentAmount(e.target.value)
+                    setPaymentError("")
+                  }}
+                />
+                {paymentError && <p className="text-xs text-red-500">{paymentError}</p>}
+              </div>
+            </div>
+          )}
+          <DialogFooter className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setPaymentDialogOpen(false)}>Cancel</Button>
+            <Button onClick={submitPayment}>Apply Payment</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

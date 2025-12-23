@@ -5,6 +5,7 @@ import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import { Sidebar } from "@/components/sidebar"
 import { ServiceDialog } from "@/components/service-dialog"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -73,6 +74,12 @@ export default function ServicesPage() {
     pending: "default",
     in_progress: "secondary",
     completed: "outline",
+  }
+
+  const paymentColors: Record<string, any> = {
+    paid: "default",
+    partial: "secondary",
+    unpaid: "destructive",
   }
 
   return (
@@ -179,7 +186,7 @@ export default function ServicesPage() {
                             </Badge>
                           </div>
 
-                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-3">
+                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-3">
                             <div>
                               <p className="text-xs text-muted-foreground mb-1">Machine</p>
                               <p className="text-sm text-foreground font-medium">{service.machine?.name || "N/A"}</p>
@@ -200,6 +207,26 @@ export default function ServicesPage() {
                             <div>
                               <p className="text-xs text-muted-foreground mb-1">Cost</p>
                               <p className="text-sm text-foreground font-bold">{formatCurrency(service.cost ? Number(service.cost) : null)}</p>
+                            </div>
+
+                            <div>
+                              <p className="text-xs text-muted-foreground mb-1">Payment</p>
+                              {service.paymentInfo ? (
+                                <div className="flex items-center gap-2">
+                                  <Badge variant={paymentColors[service.paymentInfo.paymentStatus] || "outline"}>
+                                    {service.paymentInfo.paymentStatus === "paid"
+                                      ? "Paid"
+                                      : service.paymentInfo.paymentStatus === "partial"
+                                      ? "Partial"
+                                      : "Unpaid"}
+                                  </Badge>
+                                  <p className="text-xs text-muted-foreground">
+                                    Paid {formatCurrency(service.paymentInfo.paidAmount)} / {formatCurrency(service.paymentInfo.totalAmount)}
+                                  </p>
+                                </div>
+                              ) : (
+                                <Badge variant="secondary">No Invoice</Badge>
+                              )}
                             </div>
                           </div>
 

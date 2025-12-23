@@ -327,6 +327,7 @@ export const invoicesAPI = {
   update: async (id: string, data: Partial<{
     paymentStatus: 'paid' | 'unpaid' | 'partial';
     dueDate?: string;
+    paidAmount?: number;
   }>) => {
     return apiRequest<any>(`/invoices/${id}`, {
       method: 'PUT',
@@ -334,10 +335,10 @@ export const invoicesAPI = {
     });
   },
 
-  updatePaymentStatus: async (id: string, paymentStatus: 'paid' | 'unpaid' | 'partial') => {
+  updatePaymentStatus: async (id: string, paymentStatus: 'paid' | 'unpaid' | 'partial', paidAmount?: number) => {
     return apiRequest<any>(`/invoices/${id}/payment-status`, {
       method: 'PATCH',
-      body: JSON.stringify({ paymentStatus }),
+      body: JSON.stringify({ paymentStatus, ...(paidAmount !== undefined ? { paidAmount } : {}) }),
     });
   },
 

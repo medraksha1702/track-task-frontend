@@ -25,6 +25,7 @@ export function InvoiceDialog({ isOpen, onClose, invoice }: { isOpen: boolean; o
     invoiceDate: "",
     dueDate: "",
     paymentStatus: "unpaid" as 'paid' | 'unpaid' | 'partial',
+    paidAmount: 0,
   })
 
   const [items, setItems] = useState<InvoiceItem[]>([])
@@ -46,6 +47,7 @@ export function InvoiceDialog({ isOpen, onClose, invoice }: { isOpen: boolean; o
         invoiceDate: invoice.invoiceDate ? new Date(invoice.invoiceDate).toISOString().split('T')[0] : "",
         dueDate: invoice.dueDate ? new Date(invoice.dueDate).toISOString().split('T')[0] : "",
         paymentStatus: invoice.paymentStatus || "unpaid",
+        paidAmount: Number(invoice.paidAmount || 0),
       })
       if (invoice.items) {
         setItems(invoice.items.map((item: any) => ({
@@ -62,6 +64,7 @@ export function InvoiceDialog({ isOpen, onClose, invoice }: { isOpen: boolean; o
         invoiceDate: today,
         dueDate: "",
         paymentStatus: "unpaid",
+        paidAmount: 0,
       })
       setItems([])
     }
@@ -113,6 +116,7 @@ export function InvoiceDialog({ isOpen, onClose, invoice }: { isOpen: boolean; o
         // Update existing invoice
         await invoicesAPI.update(invoice.id, {
           paymentStatus: formData.paymentStatus,
+          paidAmount: formData.paymentStatus === 'partial' ? formData.paidAmount : undefined,
           dueDate,
         })
       } else {
@@ -210,6 +214,24 @@ export function InvoiceDialog({ isOpen, onClose, invoice }: { isOpen: boolean; o
               />
             </div>
           </div>
+
+      {invoice && (
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label htmlFor="paidAmount">Paid Amount</Label>
+            <Input
+              id="paidAmount"
+              type="number"
+              step="0.01"
+              min="0"
+              value={formData.paidAmount}
+              onChange={(e) => setFormData({ ...formData, paidAmount: parseFloat(e.target.value) || 0 })}
+              disabled={formData.paymentStatus === 'unpaid'}
+            />
+            <p className="text-xs text-muted-foreground">Set when status is Partial; will auto-set for Paid/Unpaid.</p>
+          </div>
+        </div>
+      )}
 
           {!invoice && (
             <>
