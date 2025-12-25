@@ -7,13 +7,16 @@ import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Sidebar } from "@/components/sidebar"
 import { InventoryDialog } from "@/components/inventory-dialog"
+import { InvoiceDialog } from "@/components/invoice-dialog"
 import { useMachines } from "@/hooks/useMachines"
 import { machinesAPI } from "@/lib/api"
 
 export default function InventoryPage() {
   const [searchQuery, setSearchQuery] = useState("")
   const [isDialogOpen, setIsDialogOpen] = useState(false)
+  const [isInvoiceDialogOpen, setIsInvoiceDialogOpen] = useState(false)
   const [selectedMachine, setSelectedMachine] = useState<any>(null)
+  const [machineToSell, setMachineToSell] = useState<any>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [statusFilter, setStatusFilter] = useState<string | undefined>(undefined)
 
@@ -38,10 +41,21 @@ export default function InventoryPage() {
     refetch()
   }
 
+  const handleInvoiceDialogClose = () => {
+    setIsInvoiceDialogOpen(false)
+    setMachineToSell(null)
+    refetch()
+  }
+
+  const handleSellMachine = (machine: any) => {
+    setMachineToSell(machine)
+    setIsInvoiceDialogOpen(true)
+  }
+
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
+    return new Intl.NumberFormat('en-IN', {
       style: 'currency',
-      currency: 'USD',
+      currency: 'INR',
       minimumFractionDigits: 0,
     }).format(amount)
   }
@@ -58,12 +72,10 @@ export default function InventoryPage() {
 
   const statusColors: Record<string, any> = {
     available: "default",
-    under_service: "secondary",
     sold: "outline",
   }
 
   const availableCount = machinesList.filter((m) => m.status === "available").length
-  const reservedCount = machinesList.filter((m) => m.status === "under_service").length
   const soldCount = machinesList.filter((m) => m.status === "sold").length
   const totalValue = machinesList
     .filter((m) => m.status !== "sold")
@@ -106,17 +118,13 @@ export default function InventoryPage() {
               </Button>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
               <Card className="p-6">
                 <p className="text-sm text-muted-foreground mb-1">Available</p>
                 <p className="text-3xl font-bold text-foreground">{availableCount}</p>
               </Card>
               <Card className="p-6">
-                <p className="text-sm text-muted-foreground mb-1">Reserved</p>
-                <p className="text-3xl font-bold text-foreground">{reservedCount}</p>
-              </Card>
-              <Card className="p-6">
-                <p className="text-sm text-muted-foreground mb-1">Sold This Month</p>
+                <p className="text-sm text-muted-foreground mb-1">Sold</p>
                 <p className="text-3xl font-bold text-foreground">{soldCount}</p>
               </Card>
               <Card className="p-6">
@@ -178,7 +186,7 @@ export default function InventoryPage() {
                           <h3 className="text-lg font-bold text-foreground mb-2">{machine.name}</h3>
                           <div className="flex items-center gap-2 mb-3">
                             <Badge variant={statusColors[machine.status] || "default"}>
-                              {machine.status === "available" ? "Available" : machine.status === "under_service" ? "Under Service" : "Sold"}
+                              {machine.status === "available" ? "Available" : "Sold"}
                             </Badge>
                             <Badge variant="outline">Stock: {machine.stockQuantity}</Badge>
                           </div>
@@ -247,15 +255,42 @@ export default function InventoryPage() {
                         )}
                       </div>
 
-                      <div className="border-t border-border pt-4 flex items-center justify-between">
-                        <div>
-                          <p className="text-xs text-muted-foreground mb-1">Purchase Price</p>
-                          <p className="text-sm font-semibold text-foreground">{formatCurrency(Number(machine.purchasePrice))}</p>
+                      <div className="border-t border-border pt-4">
+                        <div className="flex items-center justify-between mb-3">
+                          <div>
+                            <p className="text-xs text-muted-foreground mb-1">Purchase Price</p>
+                            <p className="text-sm font-semibold text-foreground">{formatCurrency(Number(machine.purchasePrice))}</p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-xs text-muted-foreground mb-1">Sale Price</p>
+                            <p className="text-lg font-bold text-green-600">{formatCurrency(Number(machine.sellingPrice))}</p>
+                          </div>
                         </div>
-                        <div className="text-right">
-                          <p className="text-xs text-muted-foreground mb-1">Sale Price</p>
-                          <p className="text-lg font-bold text-green-600">{formatCurrency(Number(machine.sellingPrice))}</p>
-                        </div>
+                        {machine.status === "available" && machine.stockQuantity > 0 && (
+                          <Button 
+                            onClick={() => handleSellMachine(machine)}
+                            className="w-full"
+                            variant="default"
+                          >
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              width="16"
+                              height="16"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              className="mr-2"
+                            >
+                              <circle cx="9" cy="21" r="1" />
+                              <circle cx="20" cy="21" r="1" />
+                              <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" />
+                            </svg>
+                            Sell Machine
+                          </Button>
+                        )}
                       </div>
                     </Card>
                   ))}
@@ -275,6 +310,7 @@ export default function InventoryPage() {
       </div>
 
       <InventoryDialog isOpen={isDialogOpen} onClose={handleDialogClose} machine={selectedMachine} />
+      <InvoiceDialog isOpen={isInvoiceDialogOpen} onClose={handleInvoiceDialogClose} invoice={null} preSelectedMachine={machineToSell} />
     </div>
   )
 }

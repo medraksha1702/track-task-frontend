@@ -17,6 +17,7 @@ export function InventoryDialog({ isOpen, onClose, machine }: { isOpen: boolean;
     condition: "New",
     purchasePrice: "",
     salePrice: "",
+    stockQuantity: "",
     status: "Available",
     location: "",
     dateAcquired: "",
@@ -32,7 +33,8 @@ export function InventoryDialog({ isOpen, onClose, machine }: { isOpen: boolean;
         condition: "New",
         purchasePrice: machine.purchasePrice ? String(machine.purchasePrice) : "",
         salePrice: machine.sellingPrice ? String(machine.sellingPrice) : "",
-        status: machine.status === "available" ? "Available" : machine.status === "under_service" ? "Reserved" : "Sold",
+        stockQuantity: machine.stockQuantity ? String(machine.stockQuantity) : "0",
+        status: machine.status === "available" ? "Available" : "Sold",
         location: "",
         dateAcquired: machine.createdAt ? new Date(machine.createdAt).toISOString().split('T')[0] : "",
         serialNumber: machine.serialNumber || "",
@@ -45,6 +47,7 @@ export function InventoryDialog({ isOpen, onClose, machine }: { isOpen: boolean;
         condition: "New",
         purchasePrice: "",
         salePrice: "",
+        stockQuantity: "1",
         status: "Available",
         location: "",
         dateAcquired: "",
@@ -59,6 +62,7 @@ export function InventoryDialog({ isOpen, onClose, machine }: { isOpen: boolean;
       const { machinesAPI } = await import('@/lib/api')
       const purchasePrice = parseFloat(formData.purchasePrice)
       const salePrice = parseFloat(formData.salePrice)
+      const stockQuantity = parseInt(formData.stockQuantity) || 0
       
       if (machine) {
         await machinesAPI.update(machine.id, {
@@ -67,8 +71,8 @@ export function InventoryDialog({ isOpen, onClose, machine }: { isOpen: boolean;
           serialNumber: formData.serialNumber || undefined,
           purchasePrice,
           sellingPrice: salePrice,
-          stockQuantity: parseInt(formData.status === "Available" ? "1" : "0") || 0,
-          status: formData.status.toLowerCase().replace(" ", "_") as "available" | "sold" | "under_service",
+          stockQuantity,
+          status: formData.status.toLowerCase() as "available" | "sold",
         })
       } else {
         await machinesAPI.create({
@@ -77,8 +81,8 @@ export function InventoryDialog({ isOpen, onClose, machine }: { isOpen: boolean;
           serialNumber: formData.serialNumber || undefined,
           purchasePrice,
           sellingPrice: salePrice,
-          stockQuantity: parseInt(formData.status === "Available" ? "1" : "0") || 0,
-          status: formData.status.toLowerCase().replace(" ", "_") as "available" | "sold" | "under_service",
+          stockQuantity,
+          status: formData.status.toLowerCase() as "available" | "sold",
         })
       }
       onClose()
@@ -140,7 +144,6 @@ export function InventoryDialog({ isOpen, onClose, machine }: { isOpen: boolean;
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="Available">Available</SelectItem>
-                <SelectItem value="Reserved">Under Service</SelectItem>
                 <SelectItem value="Sold">Sold</SelectItem>
               </SelectContent>
             </Select>
@@ -148,7 +151,7 @@ export function InventoryDialog({ isOpen, onClose, machine }: { isOpen: boolean;
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="purchasePrice">Purchase Price ($)</Label>
+              <Label htmlFor="purchasePrice">Purchase Price (₹)</Label>
               <Input
                 id="purchasePrice"
                 type="number"
@@ -160,7 +163,7 @@ export function InventoryDialog({ isOpen, onClose, machine }: { isOpen: boolean;
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="salePrice">Sale Price ($)</Label>
+              <Label htmlFor="salePrice">Sale Price (₹)</Label>
               <Input
                 id="salePrice"
                 type="number"
@@ -170,6 +173,19 @@ export function InventoryDialog({ isOpen, onClose, machine }: { isOpen: boolean;
                 required
               />
             </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="stockQuantity">Stock Quantity</Label>
+            <Input
+              id="stockQuantity"
+              type="number"
+              min="0"
+              placeholder="e.g., 5"
+              value={formData.stockQuantity}
+              onChange={(e) => setFormData({ ...formData, stockQuantity: e.target.value })}
+              required
+            />
           </div>
 
 

@@ -11,26 +11,52 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea"
 import { useCustomers } from "@/hooks/useCustomers"
 import { useMachines } from "@/hooks/useMachines"
+import { useAMCs } from "@/hooks/useAMCs"
+import { amcsAPI } from "@/lib/api"
 
 export function ServiceDialog({ isOpen, onClose, service }: { isOpen: boolean; onClose: () => void; service: any }) {
   const [formData, setFormData] = useState({
     customerId: "",
     machineId: "",
+    amcId: "",
     serviceType: "maintenance",
     status: "pending",
     serviceDate: "",
     cost: "",
     description: "",
   })
+  const [availableAMCs, setAvailableAMCs] = useState<any[]>([])
 
   const { customers } = useCustomers()
   const { machines } = useMachines('available')
+
+  // Fetch AMCs when customer or machine changes
+  useEffect(() => {
+    const fetchAMCs = async () => {
+      if (formData.customerId && formData.machineId) {
+        try {
+          const data = await amcsAPI.getAll(1, 100, 'active', formData.customerId)
+          // Filter AMCs that match the selected machine
+          const matchingAMCs = data.amcs.filter((amc: any) => 
+            amc.machineId === formData.machineId && amc.status === 'active'
+          )
+          setAvailableAMCs(matchingAMCs)
+        } catch (error) {
+          setAvailableAMCs([])
+        }
+      } else {
+        setAvailableAMCs([])
+      }
+    }
+    fetchAMCs()
+  }, [formData.customerId, formData.machineId])
 
   useEffect(() => {
     if (service) {
       setFormData({
         customerId: service.customerId || service.customer?.id || "",
         machineId: service.machineId || service.machine?.id || "",
+        amcId: service.amcId || service.amc?.id || "",
         serviceType: service.serviceType || "maintenance",
         status: service.status || "pending",
         serviceDate: service.serviceDate ? new Date(service.serviceDate).toISOString().split('T')[0] : "",
@@ -42,6 +68,7 @@ export function ServiceDialog({ isOpen, onClose, service }: { isOpen: boolean; o
       setFormData({
         customerId: "",
         machineId: "",
+        amcId: "",
         serviceType: "maintenance",
         status: "pending",
         serviceDate: today,
@@ -61,6 +88,7 @@ export function ServiceDialog({ isOpen, onClose, service }: { isOpen: boolean; o
         await servicesAPI.update(service.id, {
           customerId: formData.customerId,
           machineId: formData.machineId || undefined,
+          amcId: formData.amcId || undefined,
           serviceType: formData.serviceType as 'repair' | 'maintenance' | 'installation',
           status: formData.status,
           serviceDate,
@@ -71,6 +99,7 @@ export function ServiceDialog({ isOpen, onClose, service }: { isOpen: boolean; o
         await servicesAPI.create({
           customerId: formData.customerId,
           machineId: formData.machineId || undefined,
+          amcId: formData.amcId || undefined,
           serviceType: formData.serviceType as 'repair' | 'maintenance' | 'installation',
           status: formData.status,
           serviceDate,
@@ -113,7 +142,7 @@ export function ServiceDialog({ isOpen, onClose, service }: { isOpen: boolean; o
 
             <div className="space-y-2">
               <Label htmlFor="machineId">Machine/Equipment (Optional)</Label>
-              <Select value={formData.machineId || "none"} onValueChange={(value) => setFormData({ ...formData, machineId: value === "none" ? "" : value })}>
+              <Select value={formData.machineId || "none"} onValueChange={(value) => setFormData({ ...formData, machineId: value === "none" ? "" : value, amcId: "" })}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select machine (optional)" />
                 </SelectTrigger>
@@ -128,6 +157,26 @@ export function ServiceDialog({ isOpen, onClose, service }: { isOpen: boolean; o
               </Select>
             </div>
           </div>
+
+          {formData.customerId && formData.machineId && availableAMCs.length > 0 && (
+            <div className="space-y-2">
+              <Label htmlFor="amcId">AMC Contract (Optional)</Label>
+              <Select value={formData.amcId || "none"} onValueChange={(value) => setFormData({ ...formData, amcId: value === "none" ? "" : value })}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select AMC contract (optional)" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">None</SelectItem>
+                  {availableAMCs.map((amc) => (
+                    <SelectItem key={amc.id} value={amc.id}>
+                      {amc.contractNumber} - {new Date(amc.endDate).toLocaleDateString('en-IN')}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">Link this service to an active AMC contract</p>
+            </div>
+          )}
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
@@ -172,7 +221,7 @@ export function ServiceDialog({ isOpen, onClose, service }: { isOpen: boolean; o
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="cost">Service Cost ($)</Label>
+              <Label htmlFor="cost">Service Cost (₹)</Label>
               <Input
                 id="cost"
                 type="number"

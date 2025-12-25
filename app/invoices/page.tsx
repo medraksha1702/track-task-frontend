@@ -48,6 +48,31 @@ export default function InvoicesPage() {
     }
   }
 
+  const handleDownloadPDF = async (invoice: any) => {
+    try {
+      const blob = await invoicesAPI.downloadPDF(invoice.id)
+      const url = window.URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `Invoice-${invoice.invoiceNumber}.pdf`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      window.URL.revokeObjectURL(url)
+    } catch (err: any) {
+      alert(err.message || 'Failed to download PDF')
+    }
+  }
+
+  const handleEmailInvoice = async (invoice: any) => {
+    try {
+      await invoicesAPI.emailInvoice(invoice.id)
+      alert(`Invoice sent successfully to ${invoice.customer?.email || 'customer'}`)
+    } catch (err: any) {
+      alert(err.message || 'Failed to send email. Make sure email is configured.')
+    }
+  }
+
   const handleDialogClose = () => {
     setIsDialogOpen(false)
     setSelectedInvoice(null)
@@ -55,9 +80,9 @@ export default function InvoicesPage() {
   }
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
+    return new Intl.NumberFormat('en-IN', {
       style: 'currency',
-      currency: 'USD',
+      currency: 'INR',
       minimumFractionDigits: 0,
     }).format(amount)
   }
@@ -326,6 +351,51 @@ export default function InvoicesPage() {
                           </div>
 
                           <div className="flex items-center gap-2 ml-4">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              title="Download PDF"
+                              onClick={() => handleDownloadPDF(invoice)}
+                            >
+                              <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                width="16"
+                                height="16"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              >
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                                <polyline points="7 10 12 15 17 10" />
+                                <line x1="12" x2="12" y1="15" y2="3" />
+                              </svg>
+                            </Button>
+                            {invoice.customer?.email && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                title="Email Invoice"
+                                onClick={() => handleEmailInvoice(invoice)}
+                              >
+                                <svg
+                                  xmlns="http://www.w3.org/2000/svg"
+                                  width="16"
+                                  height="16"
+                                  viewBox="0 0 24 24"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  strokeWidth="2"
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                >
+                                  <rect width="20" height="16" x="2" y="4" rx="2" />
+                                  <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
+                                </svg>
+                              </Button>
+                            )}
                             {invoice.paymentStatus !== 'paid' && (
                               <Button
                                 variant="outline"

@@ -347,24 +347,184 @@ export const invoicesAPI = {
       method: 'DELETE',
     });
   },
+
+  downloadPDF: async (id: string) => {
+    const response = await fetch(`${API_BASE_URL}/invoices/${id}/pdf`, {
+      headers: {
+        'Authorization': `Bearer ${getToken()}`,
+      },
+    });
+    if (!response.ok) {
+      throw new Error('Failed to download PDF');
+    }
+    return response.blob();
+  },
+
+  emailInvoice: async (id: string, email?: string) => {
+    return apiRequest<{ message: string }>(`/invoices/${id}/email`, {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+    });
+  },
 };
 
 // Dashboard API
 export const dashboardAPI = {
-  getStats: async () => {
+  getStats: async (startDate?: string, endDate?: string) => {
+    const params = new URLSearchParams();
+    if (startDate) params.append('startDate', startDate);
+    if (endDate) params.append('endDate', endDate);
+    const url = `/dashboard/stats${params.toString() ? `?${params}` : ''}`;
     return apiRequest<{
       totalCustomers: number;
       activeServices: number;
+      totalMachines: number;
       totalRevenue: number;
-      monthlyRevenue: Array<{ month: string; revenue: number }>;
-    }>('/dashboard/stats');
+      totalCosts: number;
+      serviceCosts: number;
+      machineCosts: number;
+      profit: number;
+      monthlyRevenue: Array<{ month: string; revenue: number; costs: number; profit: number }>;
+      inventoryBreakdown: {
+        available: number;
+        sold: number;
+        totalValue: number;
+      };
+    }>(url);
   },
 
-  getRevenue: async () => {
-    return apiRequest<Array<{ month: string; revenue: number }>>('/dashboard/revenue');
+  getRevenue: async (startDate?: string, endDate?: string) => {
+    const params = new URLSearchParams();
+    if (startDate) params.append('startDate', startDate);
+    if (endDate) params.append('endDate', endDate);
+    const url = `/dashboard/revenue${params.toString() ? `?${params}` : ''}`;
+    return apiRequest<Array<{ month: string; revenue: number; costs: number; profit: number }>>(url);
   },
 };
 
+// Reports API
+export const reportsAPI = {
+  getSummary: async (startDate: string, endDate: string) => {
+    const params = new URLSearchParams({ startDate, endDate });
+    return apiRequest<{
+      period: string;
+      totalRevenue: number;
+      totalCosts: number;
+      profit: number;
+      invoicesCount: number;
+      servicesCount: number;
+      machinesSold: number;
+      topCustomers: Array<{
+        customerName: string;
+        totalSpent: number;
+        invoicesCount: number;
+      }>;
+      revenueByCategory: {
+        machines: number;
+        services: number;
+      };
+      amcStats: {
+        totalContracts: number;
+        activeContracts: number;
+        expiredContracts: number;
+        totalAMCValue: number;
+        expiring30Days: number;
+        servicesUnderAMC: number;
+      };
+    }>(`/reports/summary?${params}`);
+  },
 
+  getUpcomingServices: async () => {
+    return apiRequest<any[]>('/reports/upcoming-services');
+  },
 
+  getOverdueInvoices: async () => {
+    return apiRequest<any[]>('/reports/overdue-invoices');
+  },
+};
 
+// AMC API
+export const amcsAPI = {
+  getAll: async (page: number = 1, limit: number = 10, status?: string, customerId?: string) => {
+    const params = new URLSearchParams({
+      page: page.toString(),
+      limit: limit.toString(),
+      ...(status && { status }),
+      ...(customerId && { customerId }),
+    });
+    return apiRequest<{
+      amcs: any[];
+      pagination: {
+        page: number;
+        limit: number;
+        total: number;
+        totalPages: number;
+      };
+    }>(`/amcs?${params}`);
+  },
+
+  getById: async (id: string) => {
+    return apiRequest<any>(`/amcs/${id}`);
+  },
+
+  create: async (data: {
+    customerId: string;
+    machineId: string;
+    contractNumber?: string;
+    startDate: string;
+    endDate: string;
+    contractValue: number;
+    renewalDate?: string | null;
+    notes?: string | null;
+  }) => {
+    return apiRequest<any>('/amcs', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+
+  update: async (id: string, data: {
+    customerId?: string;
+    machineId?: string;
+    contractNumber?: string;
+    startDate?: string;
+    endDate?: string;
+    contractValue?: number;
+    status?: 'active' | 'expired' | 'renewed' | 'cancelled';
+    renewalDate?: string | null;
+    notes?: string | null;
+  }) => {
+    return apiRequest<any>(`/amcs/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  },
+
+  delete: async (id: string) => {
+    return apiRequest<{ message: string }>(`/amcs/${id}`, {
+      method: 'DELETE',
+    });
+  },
+
+  getStats: async () => {
+    return apiRequest<{
+      total: number;
+      active: number;
+      expired: number;
+      expiring30: number;
+      expiring60: number;
+      expiring90: number;
+      totalValue: number;
+    }>('/amcs/stats');
+  },
+
+  getExpiring: async (days: number = 30) => {
+    return apiRequest<any[]>(`/amcs/expiring?days=${days}`);
+  },
+
+  sendRenewalReminder: async (id: string) => {
+    return apiRequest<{ message: string }>(`/amcs/${id}/send-reminder`, {
+      method: 'POST',
+    });
+  },
+};

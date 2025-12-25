@@ -23,7 +23,7 @@ export default function ServicesPage() {
     if (currentTab === "all") return undefined
     if (currentTab === "scheduled") return "pending"
     if (currentTab === "in-progress") return "in_progress"
-    if (currentTab === "completed") return "completed"
+    if (currentTab === "completed" || currentTab === "unpaid-completed") return "completed"
     return undefined
   }, [currentTab])
 
@@ -49,10 +49,10 @@ export default function ServicesPage() {
   }
 
   const formatCurrency = (amount: number | null) => {
-    if (!amount) return "$0"
-    return new Intl.NumberFormat('en-US', {
+    if (!amount) return "₹0"
+    return new Intl.NumberFormat('en-IN', {
       style: 'currency',
-      currency: 'USD',
+      currency: 'INR',
       minimumFractionDigits: 0,
     }).format(amount)
   }
@@ -61,6 +61,16 @@ export default function ServicesPage() {
   const servicesList = services || []
 
   const filteredServices = servicesList.filter((service) => {
+    // Filter by payment status for "unpaid-completed" tab
+    if (currentTab === "unpaid-completed") {
+      const isCompleted = service.status === "completed"
+      const hasUnpaidPayment = service.paymentInfo && 
+        (service.paymentInfo.paymentStatus === "unpaid" || service.paymentInfo.paymentStatus === "partial")
+      if (!isCompleted || !hasUnpaidPayment) {
+        return false
+      }
+    }
+
     const customerName = service.customer?.name || ""
     const machineName = service.machine?.name || ""
     const matchesSearch =
@@ -151,6 +161,7 @@ export default function ServicesPage() {
                     <TabsTrigger value="scheduled">Scheduled</TabsTrigger>
                     <TabsTrigger value="in-progress">In Progress</TabsTrigger>
                     <TabsTrigger value="completed">Completed</TabsTrigger>
+                    <TabsTrigger value="unpaid-completed">Unpaid/Partial</TabsTrigger>
                   </TabsList>
                 </Tabs>
               </div>
@@ -184,9 +195,14 @@ export default function ServicesPage() {
                             <Badge variant={statusColors[service.status] || "default"}>
                               {service.status === "pending" ? "Scheduled" : service.status === "in_progress" ? "In Progress" : "Completed"}
                             </Badge>
+                            {service.amc && (
+                              <Badge variant="secondary" className="bg-blue-100 text-blue-700">
+                                AMC: {service.amc.contractNumber}
+                              </Badge>
+                            )}
                           </div>
 
-                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-3">
+                          <div className={`grid grid-cols-1 md:grid-cols-2 ${service.amc ? 'lg:grid-cols-6' : 'lg:grid-cols-5'} gap-4 mb-3`}>
                             <div>
                               <p className="text-xs text-muted-foreground mb-1">Machine</p>
                               <p className="text-sm text-foreground font-medium">{service.machine?.name || "N/A"}</p>
@@ -196,6 +212,13 @@ export default function ServicesPage() {
                               <p className="text-xs text-muted-foreground mb-1">Service Type</p>
                               <p className="text-sm text-foreground font-medium capitalize">{service.serviceType}</p>
                             </div>
+
+                            {service.amc && (
+                              <div>
+                                <p className="text-xs text-muted-foreground mb-1">AMC Contract</p>
+                                <p className="text-sm text-foreground font-medium">{service.amc.contractNumber}</p>
+                              </div>
+                            )}
 
                             <div>
                               <p className="text-xs text-muted-foreground mb-1">Date</p>

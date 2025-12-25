@@ -4,6 +4,7 @@ import { useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { useAuth } from "@/contexts/AuthContext"
+import { Logo } from "@/components/logo"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -49,7 +50,8 @@ export default function RegisterPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md p-8">
-        <div className="mb-8 text-center">
+        <div className="mb-8 flex flex-col items-center">
+          <Logo size="lg" showText={false} className="mb-4" />
           <h1 className="text-3xl font-bold text-foreground mb-2">Create Admin Account</h1>
           <p className="text-muted-foreground">Register a new administrator account</p>
         </div>

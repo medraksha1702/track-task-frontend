@@ -19,7 +19,7 @@ interface InvoiceItem {
   price: number
 }
 
-export function InvoiceDialog({ isOpen, onClose, invoice }: { isOpen: boolean; onClose: () => void; invoice: any }) {
+export function InvoiceDialog({ isOpen, onClose, invoice, preSelectedMachine }: { isOpen: boolean; onClose: () => void; invoice: any; preSelectedMachine?: any }) {
   const [formData, setFormData] = useState({
     customerId: "",
     invoiceDate: "",
@@ -66,9 +66,19 @@ export function InvoiceDialog({ isOpen, onClose, invoice }: { isOpen: boolean; o
         paymentStatus: "unpaid",
         paidAmount: 0,
       })
-      setItems([])
+      // If a machine is pre-selected, add it to items
+      if (preSelectedMachine) {
+        setItems([{
+          itemType: 'machine',
+          referenceId: preSelectedMachine.id,
+          quantity: 1,
+          price: Number(preSelectedMachine.sellingPrice || 0),
+        }])
+      } else {
+        setItems([])
+      }
     }
-  }, [invoice, isOpen])
+  }, [invoice, preSelectedMachine, isOpen])
 
   const addItem = () => {
     if (!currentItem.referenceId || currentItem.price <= 0) {
@@ -386,9 +396,9 @@ export function InvoiceDialog({ isOpen, onClose, invoice }: { isOpen: boolean; o
   )
 
   function formatCurrency(amount: number) {
-    return new Intl.NumberFormat('en-US', {
+    return new Intl.NumberFormat('en-IN', {
       style: 'currency',
-      currency: 'USD',
+      currency: 'INR',
       minimumFractionDigits: 0,
     }).format(amount)
   }

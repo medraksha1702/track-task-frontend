@@ -2,24 +2,26 @@
 
 import { Card } from "@/components/ui/card"
 import { useDashboard } from "@/hooks/useDashboard"
-import { useMachines } from "@/hooks/useMachines"
 
-export function DashboardStats() {
-  const { stats, loading } = useDashboard();
-  const { machines } = useMachines('available');
+interface DashboardStatsProps {
+  dateRange: { startDate: string; endDate: string }
+}
+
+export function DashboardStats({ dateRange }: DashboardStatsProps) {
+  const { stats, loading } = useDashboard(dateRange.startDate, dateRange.endDate);
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
+    return new Intl.NumberFormat('en-IN', {
       style: 'currency',
-      currency: 'USD',
+      currency: 'INR',
       minimumFractionDigits: 0,
     }).format(amount);
   };
 
   if (loading) {
     return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {[1, 2, 3, 4].map((i) => (
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-6">
+        {[1, 2, 3, 4, 5, 6].map((i) => (
           <Card key={i} className="p-6">
             <div className="animate-pulse">
               <div className="h-4 bg-gray-200 rounded w-24 mb-2"></div>
@@ -35,10 +37,8 @@ export function DashboardStats() {
   const dashboardStats = [
     {
       label: "Total Revenue",
-      value: stats ? formatCurrency(Number(stats.totalRevenue)) : "$0",
-      change: stats?.monthlyRevenue && stats.monthlyRevenue.length > 1 
-        ? `Last month: ${formatCurrency(stats.monthlyRevenue[stats.monthlyRevenue.length - 1]?.revenue || 0)}`
-        : "No data",
+      value: stats ? formatCurrency(Number(stats.totalRevenue)) : "₹0",
+      change: "Collected amount",
       trend: "up" as const,
       icon: (
         <svg
@@ -54,6 +54,71 @@ export function DashboardStats() {
         >
           <line x1="12" x2="12" y1="2" y2="22" />
           <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+        </svg>
+      ),
+    },
+    {
+      label: "Total Costs",
+      value: stats ? formatCurrency(Number(stats.totalCosts)) : "₹0",
+      change: `Services: ${stats ? formatCurrency(Number(stats.serviceCosts)) : '₹0'} · Machines: ${stats ? formatCurrency(Number(stats.machineCosts)) : '₹0'}`,
+      trend: "neutral" as const,
+      icon: (
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="24"
+          height="24"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d="M19 5c-1.5 0-2.8 1.4-3 2-3.5-1.5-11-.3-11 5 0 1.8 0 3 2 4.5V20h4v-2h3v2h4v-4c1-.5 1.7-1 2-2h2v-4h-2c0-1-.5-1.5-1-2h0V5z" />
+        </svg>
+      ),
+    },
+    {
+      label: "Profit",
+      value: stats ? formatCurrency(Number(stats.profit)) : "₹0",
+      change: "Revenue - Costs",
+      trend: (stats && stats.profit > 0) ? "up" as const : "down" as const,
+      icon: (
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="24"
+          height="24"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+        </svg>
+      ),
+    },
+    {
+      label: "Total Machines",
+      value: stats?.totalMachines?.toString() || "0",
+      change: "Inventory count",
+      trend: "up" as const,
+      icon: (
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="24"
+          height="24"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z" />
+          <path d="m3.3 7 8.7 5 8.7-5" />
+          <path d="M12 22V12" />
         </svg>
       ),
     },
@@ -84,8 +149,8 @@ export function DashboardStats() {
     {
       label: "Active Services",
       value: stats?.activeServices?.toString() || "0",
-      change: "Pending & in progress",
-      trend: "neutral" as const,
+      change: "In progress",
+      trend: "up" as const,
       icon: (
         <svg
           xmlns="http://www.w3.org/2000/svg"
@@ -102,55 +167,26 @@ export function DashboardStats() {
         </svg>
       ),
     },
-    {
-      label: "Machines in Stock",
-      value: machines?.length?.toString() || "0",
-      change: "Available for sale",
-      trend: "neutral" as const,
-      icon: (
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          width="24"
-          height="24"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        >
-          <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z" />
-          <path d="m3.3 7 8.7 5 8.7-5" />
-          <path d="M12 22V12" />
-        </svg>
-      ),
-    },
   ];
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-6">
       {dashboardStats.map((stat, index) => (
         <Card key={index} className="p-6">
-          <div className="flex items-start justify-between">
-            <div className="flex-1">
-              <p className="text-sm text-muted-foreground mb-1">{stat.label}</p>
-              <p className="text-3xl font-bold text-foreground mb-2">{stat.value}</p>
-              <p
-                className={`text-sm ${
-                  stat.trend === "up"
-                    ? "text-green-600"
-                    : stat.trend === "down"
-                      ? "text-orange-600"
-                      : "text-muted-foreground"
-                }`}
-              >
-                {stat.change}
-              </p>
+          <div className="flex items-center justify-between mb-4">
+            <div className={`p-2 rounded-lg ${
+              stat.trend === "up" ? "bg-green-100 text-green-600" : 
+              stat.trend === "down" ? "bg-red-100 text-red-600" : 
+              "bg-gray-100 text-gray-600"
+            }`}>
+              {stat.icon}
             </div>
-            <div className="p-3 rounded-lg bg-primary/10 text-primary">{stat.icon}</div>
           </div>
+          <p className="text-sm text-muted-foreground mb-1">{stat.label}</p>
+          <p className="text-2xl font-bold text-foreground mb-2">{stat.value}</p>
+          <p className="text-xs text-muted-foreground">{stat.change}</p>
         </Card>
       ))}
     </div>
-  )
+  );
 }

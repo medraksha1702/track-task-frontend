@@ -1,0 +1,20 @@
+<svg width="200" height="200" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background Circle -->
+  <circle cx="100" cy="100" r="95" fill="#1e3a8a" stroke="#3b82f6" stroke-width="4"/>
+  
+  <!-- K² Text -->
+  <g fill="white">
+    <!-- K Letter -->
+    <path d="M 55 60 L 55 140 L 68 140 L 68 105 L 95 130 L 110 130 L 85 107 L 115 75 L 100 75 L 68 100 L 68 60 Z" stroke="white" stroke-width="1.5"/>
+    
+    <!-- Superscript 2 (smaller and raised) -->
+    <text x="115" y="85" font-family="Arial, sans-serif" font-size="32" font-weight="700" fill="white">2</text>
+  </g>
+  
+  <!-- Decorative line under K² -->
+  <line x1="50" y1="150" x2="150" y2="150" stroke="#3b82f6" stroke-width="3" stroke-linecap="round"/>
+  
+  <!-- Enterprise text -->
+  <text x="100" y="175" font-family="Arial, sans-serif" font-size="16" font-weight="600" fill="white" text-anchor="middle" letter-spacing="1">ENTERPRISE</text>
+</svg>
+
